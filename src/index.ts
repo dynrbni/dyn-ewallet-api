@@ -1,4 +1,7 @@
 import express from 'express';
+import doten from 'dotenv';
+
+doten.config();
 
 const app = express();
 const PORT = process.env.PORT || 8080;

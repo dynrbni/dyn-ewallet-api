@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TransactionType {
+  TRANSFER
+  TOPUP
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+
+  wallet    Wallet?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+model Wallet {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  balance   BigInt   @default(0)
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  sentTransactions     Transaction[] @relation("sender")
+  receivedTransactions Transaction[] @relation("receiver")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+model Transaction {
+  id                Int               @id @default(autoincrement())
+  referenceId       String            @unique
+
+  type              TransactionType
+  amount            BigInt
+  status            TransactionStatus
+
+  senderWalletId    Int?
+  receiverWalletId  Int?
+
+  senderWallet      Wallet? @relation("sender", fields: [senderWalletId], references: [id])
+  receiverWallet    Wallet? @relation("receiver", fields: [receiverWalletId], references: [id])
+
+  logs              TransactionLog[]
+
+  createdAt         DateTime @default(now())
+}
+
+model TransactionLog {
+  id             Int      @id @default(autoincrement())
+  transactionId  Int
+  message        String
+
+  transaction    Transaction @relation(fields: [transactionId], references: [id])
+
+  createdAt      DateTime @default(now())
+}
