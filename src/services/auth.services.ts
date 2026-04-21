@@ -17,6 +17,7 @@ type UpdateUserPayload = {
     name?: string;
     email?: string;
     password?: string;
+    newPassword?: string;
     role?: string;
 };
 
@@ -39,15 +40,19 @@ const normalizeRole = (role: string): Role => {
     throw new Error('Invalid role value');
 };
 
-const serializeUser = (user: UserWithWalletBalance) => ({
-    ...user,
-    wallet: user.wallet
-        ? {
-            ...user.wallet,
-            balance: user.wallet.balance.toString()
-        }
-        : null
-});
+const serializeUser = (user: UserWithWalletBalance) => {
+    const { password: _password, ...safeUser } = user;
+
+    return {
+        ...safeUser,
+        wallet: user.wallet
+            ? {
+                ...user.wallet,
+                balance: user.wallet.balance.toString()
+            }
+            : null
+    };
+};
 
 export const register = async ({ name, email, password }:
      { name: string; email: string; password: string }) => {
@@ -125,7 +130,8 @@ export const getUserById = async (id: string) => {
 
 export const updateUser = async (id: string, payload: UpdateUserPayload) => {
     const userId = parseUserId(id);
-    const { name, email, password, role } = payload;
+    const { name, email, password, newPassword, role } = payload;
+    const passwordCandidate = newPassword ?? password;
     const updateData: Prisma.UserUpdateInput = {};
 
     if (name !== undefined) {
@@ -134,8 +140,12 @@ export const updateUser = async (id: string, payload: UpdateUserPayload) => {
     if (email !== undefined) {
         updateData.email = email;
     }
-    if (password !== undefined) {
-        updateData.password = await bcrypt.hash(password, 10);
+    if (passwordCandidate !== undefined) {
+        const normalizedPassword = passwordCandidate.trim();
+        if (!normalizedPassword) {
+            throw new Error('Password cannot be empty');
+        }
+        updateData.password = await bcrypt.hash(normalizedPassword, 10);
     }
     if (role !== undefined) {
         updateData.role = normalizeRole(role);
@@ -156,6 +166,14 @@ export const updateUser = async (id: string, payload: UpdateUserPayload) => {
             }
         }
     });
+
+    if (passwordCandidate !== undefined) {
+        const normalizedPassword = passwordCandidate.trim();
+        const isUpdatedPasswordValid = await bcrypt.compare(normalizedPassword, updatedUser.password);
+        if (!isUpdatedPasswordValid) {
+            throw new Error('Failed to update password');
+        }
+    }
 
     return serializeUser(updatedUser);
 };

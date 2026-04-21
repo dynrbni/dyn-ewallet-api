@@ -56,13 +56,19 @@ export const getUserById = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, email, password, role } = req.body;
+        const { name, email, password, newPassword, role } = req.body;
 
-        if (name === undefined && email === undefined && password === undefined && role === undefined) {
+        if (
+            name === undefined &&
+            email === undefined &&
+            password === undefined &&
+            newPassword === undefined &&
+            role === undefined
+        ) {
             return res.status(400).json({ message: "At least one field is required" });
         }
 
-        const user = await authService.updateUser(String(id), { name, email, password, role });
+        const user = await authService.updateUser(String(id), { name, email, password, newPassword, role });
         res.status(200).json({ msg: "User updated successfully", user });
     } catch (error: unknown) {
         res.status(400).json({ message: getErrorMessage(error, "Error updating user") });
